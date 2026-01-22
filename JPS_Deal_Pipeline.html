@@ -1,0 +1,3688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jiwani Property Solutions - Deal Pipeline</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-hover: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #3b82f6;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --red: #ef4444;
+            --gray: #6b7280;
+            --border: #334155;
+            --card-gap: 16px;
+            --card-padding: 14px 16px;
+        }
+        
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        
+        body.compact {
+            --card-gap: 10px;
+            --card-padding: 10px 12px;
+        }
+        
+        body.compact .property-card { font-size: 0.9rem; }
+        body.compact .card-address { font-size: 0.9rem; }
+        body.compact .asking-price { font-size: 1rem; }
+        body.compact .detail-value { font-size: 0.9rem; }
+        
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: white;
+        }
+        
+        .logo h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        
+        .logo span { color: var(--accent); }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .density-toggle {
+            display: flex;
+            background: var(--bg-dark);
+            border-radius: 6px;
+            padding: 2px;
+            margin-right: 8px;
+        }
+        
+        .density-btn {
+            padding: 6px 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .density-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .btn-primary:hover { background: #2563eb; }
+        
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover { background: var(--bg-hover); }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+        }
+        
+        .nav-tab {
+            padding: 14px 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        
+        .nav-tab:hover { color: var(--text-primary); }
+        .nav-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 115px);
+        }
+        
+        .sidebar {
+            width: 260px;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            padding: 16px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        
+        .stat-card {
+            background: var(--bg-dark);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .stat-card:hover {
+            border: 1px solid var(--accent);
+            margin: -1px;
+            margin-bottom: 9px;
+        }
+        
+        .stat-card h3 {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        
+        .stat-card.green .stat-value { color: var(--green); }
+        .stat-card.gray .stat-value { color: var(--text-secondary); }
+        .stat-card.red .stat-value { color: var(--red); }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+        
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 16px 0;
+        }
+        
+        .section-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        
+        .county-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .county-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            background: var(--bg-dark);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .county-item:hover { background: var(--bg-hover); }
+        .county-item.active { background: var(--accent); }
+        
+        .county-count {
+            background: var(--bg-hover);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+        
+        .county-item.active .county-count {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .sidebar-btn {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-dark);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        
+        .sidebar-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+        
+        .content {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .filter-btn:hover, .filter-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        
+        .filter-btn .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .search-box {
+            flex: 1;
+            max-width: 280px;
+            margin-left: auto;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+        
+        .search-box input::placeholder { color: var(--text-muted); }
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .view-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+        }
+        
+        .grid-view {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .grid-view.active { display: block; }
+        
+        .property-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: var(--card-gap);
+        }
+        
+        .property-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border);
+        }
+        
+        .property-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        
+        .card-header {
+            padding: var(--card-padding);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .card-address {
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+        
+        .card-location {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        
+        .card-status {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .card-status.ready {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--green);
+        }
+        
+        .card-status.new {
+            background: rgba(107, 114, 128, 0.15);
+            color: var(--text-secondary);
+        }
+        
+        .card-status.sold {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+        }
+        
+        .card-status.hold {
+            background: rgba(234, 179, 8, 0.15);
+            color: var(--yellow);
+        }
+        
+        .card-status.high {
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+        }
+        
+        .card-body {
+            padding: var(--card-padding);
+        }
+        
+        .card-details {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .detail-item {
+            text-align: center;
+            min-width: 50px;
+        }
+        
+        .detail-value {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .detail-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+        
+        .card-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        
+        .tag {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        
+        .tag-type {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+        }
+        
+        .tag-county {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent);
+        }
+        
+        .tag-nogeo {
+            background: rgba(234, 179, 8, 0.2);
+            color: var(--yellow);
+        }
+        
+        .tag-days {
+            background: rgba(107, 114, 128, 0.2);
+            color: var(--text-secondary);
+        }
+        
+        .card-asking {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .asking-price {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--green);
+        }
+        
+        .card-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .card-btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--bg-dark);
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+        
+        .card-btn:hover {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .card-notes-preview {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .map-view {
+            display: none;
+            flex: 1;
+        }
+        
+        .map-view.active { display: block; }
+        
+        #map { height: 100%; width: 100%; }
+        
+        .list-view {
+            display: none;
+            flex: 1;
+            overflow: auto;
+            padding: 16px;
+        }
+        
+        .list-view.active { display: block; }
+        
+        .list-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        
+        .list-table th {
+            background: var(--bg-card);
+            padding: 12px 10px;
+            text-align: left;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .list-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        
+        .list-table tr {
+            cursor: pointer;
+        }
+        
+        .list-table tr:hover td {
+            background: var(--bg-hover);
+        }
+        
+        .list-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .list-status.ready {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--green);
+        }
+        
+        .list-status.new {
+            background: rgba(107, 114, 128, 0.15);
+            color: var(--text-secondary);
+        }
+        
+        .list-status.sold {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+        }
+        
+        .list-status.hold {
+            background: rgba(234, 179, 8, 0.15);
+            color: var(--yellow);
+        }
+        
+        .list-status.high {
+            background: rgba(249, 115, 22, 0.15);
+            color: #f97316;
+        }
+        
+        .link-btn {
+            padding: 6px 10px;
+            border-radius: 4px;
+            border: none;
+            background: var(--accent);
+            color: white;
+            font-size: 0.7rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .link-btn:hover { background: #2563eb; }
+        
+        .link-btn.disabled {
+            background: var(--bg-hover);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+        
+        .detail-panel {
+            position: fixed;
+            top: 0;
+            right: -500px;
+            width: 480px;
+            height: 100vh;
+            background: var(--bg-card);
+            border-left: 1px solid var(--border);
+            z-index: 1000;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+        }
+        
+        .detail-panel.open { right: 0; }
+        
+        .detail-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+            z-index: 10;
+        }
+        
+        .detail-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .detail-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+        }
+        
+        .close-btn:hover { color: var(--text-primary); }
+        
+        .detail-content {
+            padding: 20px;
+        }
+        
+        .detail-section {
+            margin-bottom: 24px;
+        }
+        
+        .detail-section h3 {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        
+        .detail-field {
+            background: var(--bg-dark);
+            padding: 12px;
+            border-radius: 8px;
+        }
+        
+        .detail-field.full {
+            grid-column: span 2;
+        }
+        
+        .field-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        
+        .field-value {
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        
+        .field-value.large {
+            font-size: 1.3rem;
+            color: var(--green);
+        }
+        
+        .field-value.muted {
+            color: var(--text-muted);
+            font-style: italic;
+            font-weight: 400;
+        }
+        
+        .notes-box {
+            background: var(--bg-dark);
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .action-btn.primary {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .action-btn.primary:hover { background: #2563eb; }
+        
+        .action-btn.secondary {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+        }
+        
+        .action-btn.secondary:hover { background: var(--bg-hover); }
+        
+        .status-selector {
+            background: var(--bg-dark);
+            padding: 14px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .status-selector label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        
+        .status-dropdown {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .status-dropdown:hover {
+            border-color: var(--accent);
+        }
+        
+        .status-dropdown:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        
+        .leaflet-popup-tip { background: var(--bg-card); }
+        
+        .map-popup { min-width: 220px; }
+        
+        .map-popup .popup-header {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+        
+        .map-popup .popup-location {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+        
+        .map-popup .popup-details {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+        
+        .map-popup .popup-price {
+            font-weight: 700;
+            color: var(--green);
+            font-size: 1.1rem;
+        }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.open { display: flex; }
+        
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        
+        .modal-tabs {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        
+        .modal-tab {
+            padding: 6px 14px;
+            border-radius: 6px;
+            background: var(--bg-dark);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        
+        .modal-tab.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .form-field.full {
+            grid-column: span 2;
+        }
+        
+        .form-field label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .form-field input,
+        .form-field select,
+        .form-field textarea {
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        
+        .form-field input:focus,
+        .form-field select:focus,
+        .form-field textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .form-field textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .form-section-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 20px 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .form-section-title:first-child {
+            margin-top: 0;
+        }
+        
+        .parse-section {
+            margin-bottom: 20px;
+        }
+        
+        .parse-textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+        
+        .parse-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .parse-help {
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        
+        .parse-help strong {
+            color: var(--text-secondary);
+        }
+        
+        .preview-section {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .preview-section.active {
+            display: block;
+        }
+        
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .preview-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .preview-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        
+        .preview-table th {
+            background: var(--bg-dark);
+            padding: 10px 8px;
+            text-align: left;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+        
+        .preview-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        
+        .preview-table tr:hover td {
+            background: var(--bg-hover);
+        }
+        
+        .preview-actions {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .preview-btn {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .preview-btn.edit {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .preview-btn.remove {
+            background: var(--bg-dark);
+            color: var(--red);
+        }
+        
+        .preview-btn:hover {
+            opacity: 0.8;
+        }
+        
+        .found-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+        
+        .found-indicator.yes { background: var(--green); }
+        .found-indicator.no { background: var(--text-muted); }
+        
+        .modal-actions {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-actions-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .modal-actions-right {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        
+        .checkbox-label input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .edit-mode-toggle {
+            margin-top: 12px;
+        }
+        
+        .btn-danger {
+            background: var(--red);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 18px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 280px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .toast.success {
+            border-left: 3px solid var(--green);
+        }
+        
+        .toast.error {
+            border-left: 3px solid var(--red);
+        }
+        
+        .toast.info {
+            border-left: 3px solid var(--accent);
+        }
+        
+        .toast.warning {
+            border-left: 3px solid var(--yellow);
+        }
+        
+        .geocoding-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            color: var(--accent);
+        }
+        
+        .geocoding-status.success {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.3);
+            color: var(--green);
+        }
+        
+        .geocoding-status.error {
+            background: rgba(234, 179, 8, 0.1);
+            border-color: rgba(234, 179, 8, 0.3);
+            color: var(--yellow);
+        }
+        
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--accent);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .geo-btn {
+            margin-top: 8px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        
+        .inline-input {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            width: 100%;
+            font-size: inherit;
+            font-family: inherit;
+        }
+        
+        .inline-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">JP</div>
+            <h1>Jiwani <span>Property Solutions</span></h1>
+        </div>
+        <div class="header-actions">
+            <div class="density-toggle">
+                <button class="density-btn active" data-density="comfortable">Comfortable</button>
+                <button class="density-btn" data-density="compact">Compact</button>
+            </div>
+            <button class="btn btn-secondary" onclick="exportCSV()">Export CSV</button>
+            <button class="btn btn-secondary" onclick="exportProperties()">Export Data</button>
+            <label class="btn btn-secondary" style="padding:6px 10px; border-radius:8px; display:inline-block; cursor:pointer;">
+                Import Data
+                <input type="file" accept="application/json" onchange="importProperties(this.files[0])" style="display:none">
+            </label>
+            <button class="btn btn-primary" onclick="openAddPropertyModal()">+ Add Property</button>
+        </div>
+    </div>
+    
+    <div class="nav-tabs">
+        <div class="nav-tab active" data-view="grid">Cards</div>
+        <div class="nav-tab" data-view="list">List</div>
+        <div class="nav-tab" data-view="map">Map</div>
+    </div>
+    
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="stat-card green" onclick="setFilter('ready')">
+                <h3>Ready to Blast</h3>
+                <div class="stat-value" id="ready-count">0</div>
+                <div class="stat-label">Investor sheets ready</div>
+            </div>
+            
+            <div class="stat-card gray" onclick="setFilter('new')">
+                <h3>New / Needs Sheet</h3>
+                <div class="stat-value" id="new-count">0</div>
+                <div class="stat-label">Properties to work on</div>
+            </div>
+            
+            <div class="stat-card" onclick="setFilter('hold')" style="cursor:pointer">
+                <h3>On Hold</h3>
+                <div class="stat-value" id="hold-count" style="color: #eab308">0</div>
+                <div class="stat-label">Waiting properties</div>
+            </div>
+            
+            <div class="stat-card" onclick="setFilter('high')" style="cursor:pointer">
+                <h3>Too High</h3>
+                <div class="stat-value" id="high-count" style="color: #f97316">0</div>
+                <div class="stat-label">Overpriced deals</div>
+            </div>
+            
+            <div class="stat-card red" onclick="setFilter('sold')">
+                <h3>Sold</h3>
+                <div class="stat-value" id="sold-count">0</div>
+                <div class="stat-label">Completed deals</div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="section-title">Filter by County</div>
+            <div class="county-list" id="county-list"></div>
+            
+            <div class="divider"></div>
+            
+            <div class="section-title">Filter by Type</div>
+            <div class="county-list" id="type-list"></div>
+            
+            <div class="divider"></div>
+            
+            <button class="sidebar-btn" onclick="geocodeMissing()">Geocode Missing</button>
+        </div>
+        
+        <div class="content">
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">All (35)</button>
+                <button class="filter-btn" data-filter="ready">
+                    <span class="dot" style="background: var(--green)"></span> Ready
+                </button>
+                <button class="filter-btn" data-filter="new">
+                    <span class="dot" style="background: var(--gray)"></span> New
+                </button>
+                <button class="filter-btn" data-filter="hold">
+                    <span class="dot" style="background: #eab308"></span> On Hold
+                </button>
+                <button class="filter-btn" data-filter="high">
+                    <span class="dot" style="background: #f97316"></span> Too High
+                </button>
+                <button class="filter-btn" data-filter="sold">
+                    <span class="dot" style="background: var(--red)"></span> Sold
+                </button>
+                <div class="search-box">
+                    <input type="text" placeholder="Search address, city, notes..." id="search-input">
+                </div>
+            </div>
+            
+            <div class="view-container">
+                <div class="grid-view active" id="grid-view">
+                    <div class="property-grid" id="property-grid"></div>
+                </div>
+                
+                <div class="list-view" id="list-view">
+                    <table class="list-table">
+                        <thead>
+                            <tr>
+                                <th>Address</th>
+                                <th>City</th>
+                                <th>County</th>
+                                <th>Type</th>
+                                <th>Beds/Bath</th>
+                                <th>Asking</th>
+                                <th>Days</th>
+                                <th>Status</th>
+                                <th>Photos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="list-body"></tbody>
+                    </table>
+                </div>
+                
+                <div class="map-view" id="map-view">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="overlay" id="overlay"></div>
+    
+    <!-- Add Property Modal -->
+    <div class="modal" id="add-property-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">Add New Property</div>
+                    <div class="modal-tabs">
+                        <div class="modal-tab active" onclick="switchModalTab('manual')">Manual Entry</div>
+                        <div class="modal-tab" onclick="switchModalTab('paste')">Paste & Parse</div>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="closeAddPropertyModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tab-content" id="paste-tab">
+                    <div class="parse-section">
+                        <label style="display:block; margin-bottom:8px; font-size:0.85rem; color:var(--text-secondary)">
+                            Paste Deal Text (supports multiple deals)
+                        </label>
+                        <textarea class="parse-textarea" id="deal-text-input" placeholder="Paste one or more deals..."></textarea>
+                        <button class="btn btn-primary" style="margin-top:12px; width:100%" onclick="parseDealText()">Parse Text</button>
+                        
+                        <div class="parse-help">
+                            <strong>Supported formats:</strong><br>
+                            • Address line: street, city, PA zip<br>
+                            • Beds/baths: 3br 2ba, 3 bed 2 bath<br>
+                            • Price: 189.9k, 189k, $189,900<br>
+                            • Separate multiple deals with blank lines or ---
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section" id="preview-section">
+                        <div class="preview-header">
+                            <div class="preview-title">Parsed Properties</div>
+                            <div class="preview-count" id="preview-count"></div>
+                        </div>
+                        <table class="preview-table">
+                            <thead>
+                                <tr>
+                                    <th>Address</th>
+                                    <th>Asking</th>
+                                    <th>Beds/Bath</th>
+                                    <th>County</th>
+                                    <th>Photos</th>
+                                    <th>ARV</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="preview-body"></tbody>
+                        </table>
+                        <div style="margin-top:16px; display:flex; gap:10px">
+                            <button class="btn btn-primary" onclick="saveAllParsed()">Save All</button>
+                            <button class="btn btn-secondary" onclick="clearParsed()">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content active" id="manual-tab">
+                    <div id="geocode-status"></div>
+                    <form id="property-form" onsubmit="saveProperty(event)">
+                        <div class="form-section-title">Required Info</div>
+                        <div class="form-grid">
+                            <div class="form-field full">
+                                <label>Address *</label>
+                                <input type="text" id="form-address" required placeholder="123 Main St">
+                            </div>
+                            <div class="form-field">
+                                <label>City *</label>
+                                <input type="text" id="form-city" required placeholder="Pittsburgh" onblur="autoFillCounty()">
+                            </div>
+                            <div class="form-field">
+                                <label>ZIP</label>
+                                <input type="text" id="form-zip" placeholder="15213" onblur="autoFillCounty()">
+                            </div>
+                            <div class="form-field">
+                                <label>County</label>
+                                <input type="text" id="form-county" placeholder="Allegheny">
+                            </div>
+                            <div class="form-field">
+                                <label>Type *</label>
+                                <select id="form-type" required>
+                                    <option value="">Select...</option>
+                                    <option value="SFH">SFH</option>
+                                    <option value="MFH">MFH</option>
+                                    <option value="Lot">Lot</option>
+                                    <option value="Unknown">Unknown</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label>Asking Price *</label>
+                                <input type="number" id="form-asking" required min="0" placeholder="50000">
+                            </div>
+                            <div class="form-field">
+                                <label>Stage *</label>
+                                <select id="form-stage" required>
+                                    <option value="New">New / Needs Sheet</option>
+                                    <option value="Ready to Blast">Ready to Blast</option>
+                                    <option value="On Hold">On Hold</option>
+                                    <option value="Too High">Too High</option>
+                                    <option value="Sold">Sold</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-section-title">Property Details (Optional)</div>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label>Beds</label>
+                                <input type="number" id="form-beds" min="0">
+                            </div>
+                            <div class="form-field">
+                                <label>Baths</label>
+                                <input type="number" id="form-baths" min="0" step="0.5">
+                            </div>
+                            <div class="form-field">
+                                <label>Sq Ft</label>
+                                <input type="number" id="form-sqft" min="0">
+                            </div>
+                            <div class="form-field">
+                                <label>Access / Lockbox</label>
+                                <input type="text" id="form-access" placeholder="e.g., 3333 front door">
+                            </div>
+                        </div>
+                        
+                        <div class="form-section-title">Deal Numbers (Optional)</div>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label>ARV</label>
+                                <input type="number" id="form-arv" min="0" placeholder="After Repair Value">
+                            </div>
+                            <div class="form-field">
+                                <label>Rehab Estimate</label>
+                                <input type="number" id="form-rehab" min="0" placeholder="Estimated repairs">
+                            </div>
+                        </div>
+                        
+                        <div class="form-section-title">Links & Documents (Optional)</div>
+                        <div class="form-grid">
+                            <div class="form-field full">
+                                <label>Photos Link</label>
+                                <input type="url" id="form-pictures" placeholder="https://dropbox.com/...">
+                            </div>
+                            <div class="form-field">
+                                <label>Contract Link</label>
+                                <input type="url" id="form-contract-link" placeholder="https://...">
+                            </div>
+                            <div class="form-field">
+                                <label>Investor Sheet Link</label>
+                                <input type="url" id="form-investor-sheet" placeholder="https://...">
+                            </div>
+                        </div>
+                        
+                        <div class="form-section-title">Notes</div>
+                        <div class="form-grid">
+                            <div class="form-field full">
+                                <textarea id="form-notes" placeholder="Property details, condition, utilities..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="form-lat">
+                        <input type="hidden" id="form-lng">
+                    </form>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <div class="modal-actions-left">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="save-and-add">
+                        Save & Add Another
+                    </label>
+                </div>
+                <div class="modal-actions-right">
+                    <button class="btn btn-secondary" onclick="closeAddPropertyModal()">Cancel</button>
+                    <button class="btn btn-primary" id="save-property-btn" onclick="document.getElementById('property-form').requestSubmit()">Save Property</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="detail-panel" id="detail-panel">
+        <div class="detail-header">
+            <div>
+                <div class="detail-title" id="panel-address"></div>
+                <div class="detail-subtitle" id="panel-location"></div>
+            </div>
+            <button class="close-btn" onclick="closePanel()">&times;</button>
+        </div>
+        <div class="detail-content" id="panel-content"></div>
+    </div>
+
+    <script>
+        // Persistent storage key (must never change)
+        const STORAGE_KEY = 'jps_properties_v2';
+
+        // Properties array (will be loaded on startup)
+        let properties = [];
+
+        function loadProperties() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            properties = stored ? JSON.parse(stored) : [];
+        }
+        
+        // Default properties - YOUR DATA IS HERE
+const defaultProperties = [
+  {
+    "id": "1",
+    "address": "105 Mohawk St",
+    "city": "Bruin",
+    "zip": "16022",
+    "county": "Butler",
+    "type": "SFH",
+    "beds": 2,
+    "baths": 2.0,
+    "sqft": null,
+    "asking": 29900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/x78yyb89l1fvjrmmtsvce/AJR45aFiHvjO4RV1sq2gAXc?rlkey=tluyv1113o7cx9fyymvd78rsj&st=bnqfbn0j&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "No heat, No electric",
+    "lat": 41.0531,
+    "lng": -79.7297,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "2",
+    "address": "177-179 Pine St",
+    "city": "Johnstown",
+    "zip": "15902",
+    "county": "Cambria",
+    "type": "MFH",
+    "beds": null,
+    "baths": null,
+    "sqft": null,
+    "asking": 24900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": "Front door open",
+    "pictures": "https://www.dropbox.com/scl/fo/y16sewfrxbouqojd3hlgo/AI4gkH8rdloRwKnRVjbrJWw?rlkey=02s1kln21zophhb5on0o0w1pn&st=594d1i2j&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Newer sewer line, quiet dead end street",
+    "lat": 40.3267,
+    "lng": -78.9214,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "3",
+    "address": "313-315 Grove Ave",
+    "city": "Johnstown",
+    "zip": "15902",
+    "county": "Cambria",
+    "type": "MFH",
+    "beds": null,
+    "baths": null,
+    "sqft": null,
+    "asking": 29900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": "3333 rear door",
+    "pictures": "https://www.dropbox.com/scl/fo/7u2qye3vzmqfrgm57ftnn/APKLrqfpEzObWI0iN2ng0K0?rlkey=f6m9yixuldysn6xilhgev7pc4&st=oks393ep&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": null,
+    "lat": 40.3287,
+    "lng": -78.9194,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "4",
+    "address": "1317 W. 3rd St",
+    "city": "Chester",
+    "zip": "19013",
+    "county": "Delaware",
+    "type": "SFH",
+    "beds": 4,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 99900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/14ryt164accu3rugdlr0t/AF3IcHOnZF2KMVDgkvuJ1F8?rlkey=68pt8nrwi4lyjd6b7sv7afsos&st=bmzptlr3&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Electric heat, newer 200amp cb",
+    "lat": 39.8496,
+    "lng": -75.3757,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "5",
+    "address": "708 Jeffrey St",
+    "city": "Chester",
+    "zip": "19013",
+    "county": "Delaware",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 99900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Too High",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/mgtaud4xu7x6akm5202e7/AE7DPDyAL45t3qHHp3CCT90?rlkey=da5sb8ykxq3mm8gm7mfrpivo3&st=opjbyt5t&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": null,
+    "lat": 39.8506,
+    "lng": -75.3647,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T00:38:32.317Z"
+  },
+  {
+    "id": "6",
+    "address": "173 Beechwood Ave",
+    "city": "Clifton Heights",
+    "zip": "19018",
+    "county": "Delaware",
+    "type": "Lot",
+    "beds": null,
+    "baths": null,
+    "sqft": null,
+    "asking": 29900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": null,
+    "pictures": "https://www.dropbox.com/scl/fo/e3hgl15exdih5bmxtp3y5/ALAm-qeIbJpBsyp-jBCyy3E?rlkey=nhyusz5rprv0ouv1c9v9e2um6&st=zgfjxjho&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Buildable lot",
+    "lat": 39.929,
+    "lng": -75.2957,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T01:12:43.227Z"
+  },
+  {
+    "id": "7",
+    "address": "124 N. 3rd",
+    "city": "Darby",
+    "zip": "19023",
+    "county": "Delaware",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 89900,
+    "arv": null,
+    "rehab": null,
+    "stage": "On Hold",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/l6fevtgv0yx88h1uas8mc/AA8sINK2RcegrEjfD8NFgJk?rlkey=w6xflnx52by795ueasb998j9s&st=hkdn1co3&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Newer 100 amp cb, gas hot water heat",
+    "lat": 39.9184,
+    "lng": -75.259,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T00:38:53.097Z"
+  },
+  {
+    "id": "8",
+    "address": "2517 Peoples St",
+    "city": "Chester",
+    "zip": "19013",
+    "county": "Delaware",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 69900,
+    "arv": null,
+    "rehab": null,
+    "stage": "On Hold",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/bqjfkw6hb478w9eo9f883/AP-jNKy3oZ3jefy4elNf6FM?rlkey=6yp0llcmwhzbsfnumf7z1d0xd&st=ls789bue&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "100 amp cb, gas heat",
+    "lat": 39.8536,
+    "lng": -75.3717,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T00:38:59.626Z"
+  },
+  {
+    "id": "9",
+    "address": "19 S 6th St",
+    "city": "Darby",
+    "zip": "19023",
+    "county": "Delaware",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 89900,
+    "arv": null,
+    "rehab": null,
+    "stage": "On Hold",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/6cqzq7k79b6qukooixrd1/ALuJAilKoEsat-1tKTvyZPU?rlkey=zv2wp7z2ssuukbc02x9wjy604&st=2dn1tva5&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": null,
+    "lat": 39.9164,
+    "lng": -75.261,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T00:39:05.125Z"
+  },
+  {
+    "id": "10",
+    "address": "433 Rose St",
+    "city": "Chester",
+    "zip": "19013",
+    "county": "Delaware",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 54900,
+    "arv": null,
+    "rehab": null,
+    "stage": "On Hold",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/vw6lekqbpodl64qc7itho/AG4tjfibe84uxmqTQJYV0QE?rlkey=2krzecdtes4ryel3sb5er1c4e&st=1nkl2w3l&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "gas hot air heat",
+    "lat": 39.8476,
+    "lng": -75.3687,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T00:39:12.197Z"
+  },
+  {
+    "id": "11",
+    "address": "1114 Clover Ln",
+    "city": "Chester",
+    "zip": "19013",
+    "county": "Delaware",
+    "type": "SFH",
+    "beds": 2,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 79900,
+    "arv": null,
+    "rehab": null,
+    "stage": "On Hold",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/bt2120jtdoeqddjjbekqq/AOzPYRCbHXW5YTgqkYQQpng?rlkey=a2vjptpz0t9x646jhre4p4t7j&st=8wlauzg2&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "newer gas hot air heater, newer hot water heater, old 100 amp cb",
+    "lat": 39.8456,
+    "lng": -75.3627,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T00:39:16.310Z"
+  },
+  {
+    "id": "12",
+    "address": "128 N Wells",
+    "city": "Glenolden",
+    "zip": "19036",
+    "county": "Delaware",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 2.0,
+    "sqft": null,
+    "asking": 179900,
+    "arv": null,
+    "rehab": null,
+    "stage": "On Hold",
+    "access": "3333 side door",
+    "pictures": "https://www.dropbox.com/scl/fo/lvm0y7j4dqtn8f8jbttkt/AOrntvfyg-YX_Tz66fdC8XI?rlkey=rlb9lczgcyeieqzzi9a3r26hp&st=kdtmait4&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "100 amp cb, gas heater",
+    "lat": 39.8993,
+    "lng": -75.2896,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T00:39:19.877Z"
+  },
+  {
+    "id": "13",
+    "address": "17 E. Mowry St",
+    "city": "Chester",
+    "zip": "19013",
+    "county": "Delaware",
+    "type": "Unknown",
+    "beds": null,
+    "baths": null,
+    "sqft": null,
+    "asking": 89900,
+    "arv": null,
+    "rehab": null,
+    "stage": "On Hold",
+    "access": "Door is open",
+    "pictures": "https://www.dropbox.com/scl/fo/nze9xjf82wrrr1frehhs1/AAZ9tSJGKU87fZFg76h0alk?rlkey=6g1aa94lldlwbeymz6flxn6hj&st=vkygitrv&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "2 unit. Hoarder house. Lots of junk",
+    "lat": 39.8516,
+    "lng": -75.3577,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T00:39:23.444Z"
+  },
+  {
+    "id": "14",
+    "address": "332 Kerlin St",
+    "city": "Chester",
+    "zip": "19013",
+    "county": "Delaware",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 2.0,
+    "sqft": null,
+    "asking": 69900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/0nc532b8fauuuqnbcywie/AJkYhUeb0FZC0szvnuZ4B-E?rlkey=dxg98uwk41fv467gkgegrakew&st=hh1azjav&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Gas heat",
+    "lat": 39.8486,
+    "lng": -75.3597,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T01:43:28.944Z"
+  },
+  {
+    "id": "15",
+    "address": "67 Dixon Blvd",
+    "city": "Uniontown",
+    "zip": "15401",
+    "county": "Fayette",
+    "type": "SFH",
+    "beds": 2,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 69900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": "3333 rear door",
+    "pictures": "https://www.dropbox.com/scl/fo/uj756klqii95fulgdbyvg/AKB8JgD1XrVmipEcDY7olEE?rlkey=x0um8rz85p4gu8lnontuta2nb&st=rgmgbxub&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "gas heat, central air, detached garage",
+    "lat": 39.899,
+    "lng": -79.7249,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T02:26:17.027Z"
+  },
+  {
+    "id": "16",
+    "address": "322 Graff St",
+    "city": "Everson",
+    "zip": "15631",
+    "county": "Fayette",
+    "type": "SFH",
+    "beds": 4,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 49900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Too High",
+    "access": "3333 back door",
+    "pictures": "https://www.dropbox.com/scl/fo/6nkgwhzd6aqgf5wf4fhwd/AKkxrifJUgySQH_AAtRRIi4?rlkey=tc17fx5pbbtocjqf83e1opvbn&st=3mzy3271&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "large above ground pool",
+    "lat": 40.097,
+    "lng": -79.587,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T06:21:42.960Z"
+  },
+  {
+    "id": "17",
+    "address": "406 Market St",
+    "city": "Brownsville",
+    "zip": "15417",
+    "county": "Fayette",
+    "type": "MFH",
+    "beds": null,
+    "baths": null,
+    "sqft": null,
+    "asking": 39900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": "3333 inside 2nd door or rear door is open",
+    "pictures": "https://www.dropbox.com/scl/fo/pjhqkaz4lqrmv7mfb3qz7/AEynxMALDoJHkpc8CHZDt3w?rlkey=6eosfmpb3v0pyvfvve8vegdq6&st=lg99e9t4&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Next to gas station, barbershop and Somerset Trust Bank being built across street",
+    "lat": 40.0237,
+    "lng": -79.8837,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-22T07:01:09.667Z"
+  },
+  {
+    "id": "18",
+    "address": "102 Turnbull Ln",
+    "city": "Wickhaven",
+    "zip": "15492",
+    "county": "Fayette",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 89900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/3ne59550qa3uood3bu5f9/ANI46vn0FExt-pxsd70_pEo?rlkey=fe9abrdnarhfrtu1foeh8u413&st=fwaz7cy5&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Nice brick house, oil hot water heat, shed, rear deck, hardwood floors",
+    "lat": 40.0537,
+    "lng": -79.8137,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "19",
+    "address": "384 Market St",
+    "city": "Clarksville",
+    "zip": "15322",
+    "county": "Greene",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 2.0,
+    "sqft": null,
+    "asking": 29900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/q5vepruszp7hq41ub0hbr/ACXRyetGB_TvoiuqMrp8Ojg?rlkey=aagj320vg8pyw10vc728mpt3j&st=qlrd5ale&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "gas hot air heat, 100amp cb, large kitchen, good neighborhood, old shed in rear",
+    "lat": 39.9701,
+    "lng": -80.0427,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "20",
+    "address": "137 N Otter St",
+    "city": "Mercer",
+    "zip": "16137",
+    "county": "Mercer",
+    "type": "Lot",
+    "beds": null,
+    "baths": null,
+    "sqft": null,
+    "asking": 12900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": null,
+    "pictures": "https://www.dropbox.com/scl/fo/kyqab4jek671namgb184q/AAZ0Rda0LB1dOby5EF-LnUM?rlkey=obv18gma50cup8iv5nab1uo6j&st=74hq5bbu&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Public water and sewer available",
+    "lat": 41.227,
+    "lng": -80.239,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "21",
+    "address": "1202 Bond St",
+    "city": "Farrell",
+    "zip": "16121",
+    "county": "Mercer",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 39900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "Door is open",
+    "pictures": "https://www.dropbox.com/scl/fo/m2l1z5vso6hsrn5un26je/AAJqfHRxgMP66eYfZhxjoKI?rlkey=a22mwgp9o67wo2bg55e503p4n&st=lbm909rs&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "on big 159x247 lot. Yard and parking space, hardwood and carpet throughout, large deck",
+    "lat": 41.2126,
+    "lng": -80.4968,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "22",
+    "address": "152 E. Garrett St",
+    "city": "Somerset",
+    "zip": "15501",
+    "county": "Somerset",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": 1344,
+    "asking": 79900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/9y5gj7iwrkn98cdt5xpw9/AN5MvDYOY_JHlbDug-KZJ3w?rlkey=ti5tw1u8upvc0h2m3qrx3aju5&st=lqhon04o&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "1,344 sqft",
+    "lat": 40.0084,
+    "lng": -79.0781,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "23",
+    "address": "Rogers Riviera Rd",
+    "city": "Venango",
+    "zip": null,
+    "county": "Venango",
+    "type": "Lot",
+    "beds": null,
+    "baths": null,
+    "sqft": null,
+    "asking": 119900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": null,
+    "pictures": "https://www.dropbox.com/scl/fo/yed2uoxz649uamar9x0ii/AGUiB-AuyFRd_oFdrj98p-k?rlkey=bzt0yj67adbhoasrj106fxbi0&st=e1a7vuy9&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Buildable, flat, road frontage, no water running through land. GPS coordinates: 41.20933, -79.77143",
+    "lat": 41.4201,
+    "lng": -79.7601,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "24",
+    "address": "81 Hickory Hill Ln",
+    "city": "Youngsville",
+    "zip": "16371",
+    "county": "Warren",
+    "type": "SFH",
+    "beds": 4,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 89900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/2jvc6fwmxsgizya3gerjr/AOCcX_5mSOz__tYSvS8CY5M?rlkey=4xhzijvno8fav8724fegzwfin&st=dld3lluo&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "On 10 acres. 3 car garage with 2 detached garages. Well and septic.",
+    "lat": 41.8526,
+    "lng": -79.3188,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "25",
+    "address": "139 Highland Ave",
+    "city": "Claysville",
+    "zip": "15323",
+    "county": "Washington",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 19900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/csuq6q6wb3zhbk71rsgxc/ABP7pmDnQoNyKOS-YN4vWLk?rlkey=2lfp5ltije1xskoqf6sky34br&st=s1agysa1&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Covered front porch, newer hot water heater, newer electric panel, big rear yard",
+    "lat": 40.1184,
+    "lng": -80.4217,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "26",
+    "address": "32 Rosewood Dr",
+    "city": "Charleroi",
+    "zip": "15022",
+    "county": "Washington",
+    "type": "SFH",
+    "beds": 2,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 39900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "Door is open",
+    "pictures": null,
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Property is burned out on inside but in good area",
+    "lat": 40.1379,
+    "lng": -79.8978,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "27",
+    "address": "311 Mt Tabor Rd",
+    "city": "Coal Center",
+    "zip": "15423",
+    "county": "Washington",
+    "type": "SFH",
+    "beds": 4,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 49900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/we74vh667iexqkvzj2mm0/ABq9S0ORFrhIx3yLylKC7JM?rlkey=tuk9htnxiivz0qht6fty5ph5b&st=x20jbv8l&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "200 amp cb, oil hot air heat",
+    "lat": 40.0879,
+    "lng": -79.8978,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "28",
+    "address": "183 Country Club Rd",
+    "city": "Washington",
+    "zip": "15301",
+    "county": "Washington",
+    "type": "SFH",
+    "beds": 2,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 29900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "12345 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/1peo0u3mcbs667yaebhrv/ABlpHY8RJ6fDMfLePHOT8s8?rlkey=mguyq7msfzis8s2b3gh686gv3&st=k7p9m0jf&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Central air, new 100 amp cb, public sewer + water, gas hot air heat",
+    "lat": 40.174,
+    "lng": -80.2462,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "29",
+    "address": "38 3rd Ave",
+    "city": "Scottdale",
+    "zip": "15683",
+    "county": "Westmoreland",
+    "type": "SFH",
+    "beds": 2,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 99900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "3333 side door",
+    "pictures": "https://www.dropbox.com/scl/fo/aac4ivlkoc2p37yem0745/ACr29Hh2u2Llv-fcueyPsCo?rlkey=ic6ptnbtgum2fr2l99re07q3r&st=4evb1mpz&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Move in condition, Semi finished basement, newer gas hot air heat, newer 100 amp cb",
+    "lat": 40.1006,
+    "lng": -79.5869,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "30",
+    "address": "800 3rd Ave - Hyde Park",
+    "city": "Hyde Park",
+    "zip": "15641",
+    "county": "Westmoreland",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 59900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Sold",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/fynzb1sqmdbbc0265dxlg/ACim5D53EzUvDVpQEDmCs7g?rlkey=lx5pvewon2m8ijko81qjtwede&st=mamdmc23&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Electric heat, 200 amp cb",
+    "lat": 40.6348,
+    "lng": -79.7328,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "31",
+    "address": "800 E Hill Dr",
+    "city": "New Kensington",
+    "zip": "15068",
+    "county": "Westmoreland",
+    "type": "Lot",
+    "beds": null,
+    "baths": null,
+    "sqft": null,
+    "asking": 14900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": null,
+    "pictures": "https://www.dropbox.com/scl/fo/nozjfp1xrh6m84rhskwdg/AJN2L5VpqF9Tf-WwKaGVCdM?rlkey=0g4rjyo7n691agjqlvc259zya&st=o98zpmhr&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Commercial zoned",
+    "lat": 40.5698,
+    "lng": -79.7448,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "32",
+    "address": "130 Wood",
+    "city": "Bolivar",
+    "zip": "15923",
+    "county": "Westmoreland",
+    "type": "Lot",
+    "beds": null,
+    "baths": null,
+    "sqft": null,
+    "asking": 24900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": null,
+    "pictures": "https://www.dropbox.com/scl/fo/bl4ek1p5e52i4rcah4opo/h?rlkey=sn7r3u27qxseq2hqc8s4n4lxj&st=0sbfcs96&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": null,
+    "lat": 40.3984,
+    "lng": -79.1662,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "33",
+    "address": "2311 Cowling Rd",
+    "city": "Scottdale",
+    "zip": "15683",
+    "county": "Westmoreland",
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 139900,
+    "arv": null,
+    "rehab": null,
+    "stage": "New",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/u5alkj0ulxpvcw8lnu7mt/AHoiLmoc__eDcsVjP963YfU?rlkey=n1buxgz0sd5m4sgb075lyty45&st=k8q6opm2&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "Roof ok, newer gas hot air heater, 200 amp cb, central air",
+    "lat": 40.1006,
+    "lng": -79.5869,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "34",
+    "address": "253 Ridge Ave",
+    "city": "New Kensington",
+    "zip": "15068",
+    "county": "Westmoreland",
+    "type": "SFH",
+    "beds": 6,
+    "baths": 3.0,
+    "sqft": null,
+    "asking": 59900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/ek06zfeyckqo54jw7nikk/AMjavDGgGfzqhwqTakelPE4?rlkey=7xzs38ldd46onet3eq0g7yc04&st=smkj0a9c&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": "100 amp cb, 2 heaters both gas hot air, detached garage in back, hardwood floors, original oak doors",
+    "lat": 40.5718,
+    "lng": -79.7528,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "35",
+    "address": "110 Orange St",
+    "city": "Wrightsville",
+    "zip": "17368",
+    "county": "York",
+    "type": "SFH",
+    "beds": 2,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 134900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": "3333 front door",
+    "pictures": "https://www.dropbox.com/scl/fo/9lz7nyh9zdzou6ikzk0ow/AMNEwNSlDnf0E6ChoNhou0s?rlkey=6xj1owhzn20kmv7ngeri71ts1&st=ivde73j5&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": null,
+    "lat": 40.0254,
+    "lng": -76.5299,
+    "geoPrecision": "exact",
+    "dateAdded": "2026-01-21T06:34:05.343Z",
+    "lastUpdated": "2026-01-21T06:34:05.343Z"
+  },
+  {
+    "id": "36",
+    "address": "1037 Mcdowell St",
+    "city": "Chester",
+    "zip": "19013",
+    "county": null,
+    "type": "SFH",
+    "beds": 3,
+    "baths": 1.0,
+    "sqft": null,
+    "asking": 89900,
+    "arv": null,
+    "rehab": null,
+    "stage": "Ready to Blast",
+    "access": "3333",
+    "pictures": "https://www.dropbox.com/scl/fo/paour9bowxoazsdqajg32/APYdyfgb8dS1vnjMNEFH21c?rlkey=eeqzbjf6bp7tuwupd6rag3wf2&st=1sxg7g37&dl=0",
+    "contractLink": null,
+    "investorSheetLink": null,
+    "notes": null,
+    "lat": 39.9829308,
+    "lng": -75.7652424,
+    "geoPrecision": "approx",
+    "dateAdded": "2026-01-21T19:15:38.491Z",
+    "lastUpdated": "2026-01-21T23:54:24.093Z"
+  }
+];        
+        const statusMap = {
+            "Ready to Blast": { class: "ready", label: "Ready", color: "#22c55e" },
+            "New": { class: "new", label: "New", color: "#6b7280" },
+            "On Hold": { class: "hold", label: "On Hold", color: "#eab308" },
+            "Too High": { class: "high", label: "Too High", color: "#f97316" },
+            "Sold": { class: "sold", label: "Sold", color: "#ef4444" }
+        };
+        
+        let map;
+        let markers = [];
+        let currentFilter = 'all';
+        let countyFilter = null;
+        let typeFilter = null;
+        let searchTerm = '';
+        let editingPropertyId = null;
+        let isEditMode = false;
+        let parsedDeals = [];
+        
+        function normalizeProperties() {
+            properties.forEach(p => {
+                if (!('arv' in p) || p.arv === null || p.arv === undefined) p.arv = '';
+                if (!('rehab' in p) || p.rehab === null || p.rehab === undefined) p.rehab = '';
+                if (!('notes' in p) || p.notes === null || p.notes === undefined) p.notes = '';
+            });
+        }
+        
+        function getDaysSinceAdded(dateAdded) {
+            if (!dateAdded) return null;
+            const added = new Date(dateAdded);
+            const now = new Date();
+            const diffTime = Math.abs(now - added);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays;
+        }
+        
+        function formatDate(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        
+        async function geocodeAddress(address, city, state = 'PA', zip = '') {
+            let query = `${address}, ${city}, ${state}`;
+            if (zip) query += ` ${zip}`;
+            
+            let result = await tryGeocode(query);
+            if (result.success) {
+                return { ...result, geoPrecision: 'exact' };
+            }
+            
+            result = await tryGeocode(`${address}, ${city}, ${state}`);
+            if (result.success) {
+                return { ...result, geoPrecision: 'exact' };
+            }
+            
+            result = await tryGeocode(`${city}, ${state}`);
+            if (result.success) {
+                return { ...result, geoPrecision: 'approx' };
+            }
+            
+            return { success: false, error: 'Address not found', geoPrecision: 'none' };
+        }
+        
+        async function tryGeocode(query) {
+            const encodedQuery = encodeURIComponent(query);
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedQuery}&countrycodes=us&limit=1`;
+            
+            try {
+                const response = await fetch(url, {
+                    headers: { 'User-Agent': 'JiwaniPropertySolutions/1.0' }
+                });
+                
+                if (!response.ok) throw new Error('Geocoding request failed');
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    return {
+                        success: true,
+                        lat: parseFloat(data[0].lat),
+                        lng: parseFloat(data[0].lon),
+                        displayName: data[0].display_name
+                    };
+                }
+                return { success: false };
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                return { success: false, error: error.message };
+            }
+        }
+        
+        function showGeocodingStatus(status, message) {
+            const container = document.getElementById('geocode-status');
+            if (status === 'loading') {
+                container.innerHTML = `<div class="geocoding-status"><div class="spinner"></div><span>${message || 'Looking up address coordinates...'}</span></div>`;
+            } else if (status === 'success') {
+                container.innerHTML = `<div class="geocoding-status success"><span>✓</span><span>${message || 'Address found!'}</span></div>`;
+            } else if (status === 'error') {
+                container.innerHTML = `<div class="geocoding-status error"><span>!</span><span>${message || 'Could not find address.'}</span></div>`;
+            } else {
+                container.innerHTML = '';
+            }
+        }
+        
+        async function geocodeMissing() {
+            const missing = properties.filter(p => !p.lat || !p.lng);
+            if (missing.length === 0) {
+                showToast('All properties are already geocoded', 'info');
+                return;
+            }
+            
+            showToast(`Geocoding ${missing.length} properties...`, 'info');
+            
+            let success = 0;
+            let failed = 0;
+            
+            for (let i = 0; i < missing.length; i++) {
+                const p = missing[i];
+                if (i > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                const result = await geocodeAddress(p.address, p.city, 'PA', p.zip);
+                
+                if (result.success) {
+                    p.lat = result.lat;
+                    p.lng = result.lng;
+                    p.geoPrecision = result.geoPrecision;
+                    success++;
+                } else {
+                    p.geoPrecision = 'none';
+                    failed++;
+                }
+            }
+            
+            saveProperties();
+            refresh();
+            showToast(`Geocoded ${success} properties. ${failed} failed.`, success > 0 ? 'success' : 'warning');
+        }
+        
+        function saveProperties() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
+        }
+        
+        function showToast(message, type = 'success') {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) existingToast.remove();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProperties();
+            if (!localStorage.getItem(STORAGE_KEY) || properties.length === 0) {
+                properties = defaultProperties.slice();
+                saveProperties();
+            }
+
+            normalizeProperties();
+            updateStats();
+            renderCountyList();
+            renderTypeList();
+            renderGrid();
+            renderList();
+            initMap();
+            setupEventListeners();
+            updateFilterCounts();
+        });
+        
+        function updateStats() {
+            const ready = properties.filter(p => p.stage === "Ready to Blast").length;
+            const newCount = properties.filter(p => p.stage === "New").length;
+            const hold = properties.filter(p => p.stage === "On Hold").length;
+            const high = properties.filter(p => p.stage === "Too High").length;
+            const sold = properties.filter(p => p.stage === "Sold").length;
+            
+            document.getElementById('ready-count').textContent = ready;
+            document.getElementById('new-count').textContent = newCount;
+            document.getElementById('hold-count').textContent = hold;
+            document.getElementById('high-count').textContent = high;
+            document.getElementById('sold-count').textContent = sold;
+        }
+        
+        function renderCountyList() {
+            const counties = {};
+            properties.forEach(p => { 
+                if (p.county) counties[p.county] = (counties[p.county] || 0) + 1; 
+            });
+            
+            const sorted = Object.entries(counties).sort((a, b) => b[1] - a[1]);
+            document.getElementById('county-list').innerHTML = sorted.map(([county, count]) => `
+                <div class="county-item" data-county="${county}">
+                    <span>${county}</span>
+                    <span class="county-count">${count}</span>
+                </div>
+            `).join('');
+        }
+        
+        function renderTypeList() {
+            const types = {};
+            properties.forEach(p => { types[p.type] = (types[p.type] || 0) + 1; });
+            
+            document.getElementById('type-list').innerHTML = Object.entries(types).map(([type, count]) => `
+                <div class="county-item" data-type="${type}">
+                    <span>${type}</span>
+                    <span class="county-count">${count}</span>
+                </div>
+            `).join('');
+        }
+        
+        function getFiltered() {
+            return properties.filter(p => {
+                const stageMatch = currentFilter === 'all' || 
+                    (currentFilter === 'ready' && p.stage === 'Ready to Blast') ||
+                    (currentFilter === 'new' && p.stage === 'New') ||
+                    (currentFilter === 'hold' && p.stage === 'On Hold') ||
+                    (currentFilter === 'high' && p.stage === 'Too High') ||
+                    (currentFilter === 'sold' && p.stage === 'Sold');
+                const countyMatch = !countyFilter || p.county === countyFilter;
+                const typeMatch = !typeFilter || p.type === typeFilter;
+                const searchMatch = !searchTerm || 
+                    p.address.toLowerCase().includes(searchTerm) ||
+                    p.city.toLowerCase().includes(searchTerm) ||
+                    (p.county && p.county.toLowerCase().includes(searchTerm)) ||
+                    (p.notes && p.notes.toLowerCase().includes(searchTerm));
+                return stageMatch && countyMatch && typeMatch && searchMatch;
+            });
+        }
+        
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+            refresh();
+        }
+        
+        function updateFilterCounts() {
+            const all = properties.length;
+            const ready = properties.filter(p => p.stage === 'Ready to Blast').length;
+            const newCount = properties.filter(p => p.stage === 'New').length;
+            const hold = properties.filter(p => p.stage === 'On Hold').length;
+            const high = properties.filter(p => p.stage === 'Too High').length;
+            const sold = properties.filter(p => p.stage === 'Sold').length;
+            
+            document.querySelector('[data-filter="all"]').textContent = `All (${all})`;
+            document.querySelector('[data-filter="ready"]').innerHTML = `<span class="dot" style="background: var(--green)"></span> Ready (${ready})`;
+            document.querySelector('[data-filter="new"]').innerHTML = `<span class="dot" style="background: var(--gray)"></span> New (${newCount})`;
+            document.querySelector('[data-filter="hold"]').innerHTML = `<span class="dot" style="background: #eab308"></span> On Hold (${hold})`;
+            document.querySelector('[data-filter="high"]').innerHTML = `<span class="dot" style="background: #f97316"></span> Too High (${high})`;
+            document.querySelector('[data-filter="sold"]').innerHTML = `<span class="dot" style="background: var(--red)"></span> Sold (${sold})`;
+        }
+        
+        function formatCurrency(num) {
+            if (!num) return '-';
+            return '$' + num.toLocaleString();
+        }
+        
+        function renderGrid() {
+            const filtered = getFiltered();
+            document.getElementById('property-grid').innerHTML = filtered.map(p => {
+                const days = getDaysSinceAdded(p.dateAdded);
+                const daysText = days !== null ? `${days}d ago` : '';
+                
+                let detailsHtml = '';
+                if (p.beds || p.baths) {
+                    detailsHtml = `
+                        <div class="card-details">
+                            ${p.beds ? `<div class="detail-item"><div class="detail-value">${p.beds}</div><div class="detail-label">Beds</div></div>` : ''}
+                            ${p.baths ? `<div class="detail-item"><div class="detail-value">${p.baths}</div><div class="detail-label">Baths</div></div>` : ''}
+                            ${p.sqft ? `<div class="detail-item"><div class="detail-value">${p.sqft.toLocaleString()}</div><div class="detail-label">Sq Ft</div></div>` : ''}
+                        </div>
+                    `;
+                }
+                
+                return `
+                <div class="property-card" onclick="openPanel('${p.id}')">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-address">${p.address}</div>
+                            <div class="card-location">${p.city}, PA${p.zip ? ' ' + p.zip : ''}</div>
+                        </div>
+                        <div class="card-status ${statusMap[p.stage].class}">${statusMap[p.stage].label}</div>
+                    </div>
+                    <div class="card-body">
+                        ${detailsHtml}
+                        <div class="card-tags">
+                            <span class="tag tag-type">${p.type}</span>
+                            ${p.county ? `<span class="tag tag-county">${p.county}</span>` : ''}
+                            ${daysText ? `<span class="tag tag-days">${daysText}</span>` : ''}
+                            ${(!p.lat || !p.lng) ? '<span class="tag tag-nogeo">No Map</span>' : ''}
+                        </div>
+                        <div class="card-asking">
+                            <div class="asking-price">${formatCurrency(p.asking)}</div>
+                            <div class="card-actions">
+                                ${p.pictures ? `<a class="card-btn" href="${p.pictures}" target="_blank" onclick="event.stopPropagation()">Photos</a>` : ''}
+                            </div>
+                        </div>
+                        ${p.notes ? `<div class="card-notes-preview">${p.notes}</div>` : ''}
+                    </div>
+                </div>
+            `}).join('');
+        }
+        
+        function renderList() {
+            const filtered = getFiltered();
+            document.getElementById('list-body').innerHTML = filtered.map(p => {
+                const days = getDaysSinceAdded(p.dateAdded);
+                return `
+                <tr onclick="openPanel('${p.id}')">
+                    <td><strong>${p.address}</strong></td>
+                    <td>${p.city}</td>
+                    <td>${p.county || '-'}</td>
+                    <td>${p.type}</td>
+                    <td>${p.beds || '-'}/${p.baths || '-'}</td>
+                    <td><strong style="color:var(--green)">${formatCurrency(p.asking)}</strong></td>
+                    <td style="font-size:0.8rem;color:var(--text-secondary)">${days !== null ? days : '-'}</td>
+                    <td><span class="list-status ${statusMap[p.stage].class}">${statusMap[p.stage].label}</span></td>
+                    <td>${p.pictures ? `<a class="link-btn" href="${p.pictures}" target="_blank" onclick="event.stopPropagation()">View</a>` : '<span class="link-btn disabled">None</span>'}</td>
+                </tr>
+            `}).join('');
+        }
+        
+        function initMap() {
+            map = L.map('map').setView([40.3, -79.5], 7);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '©OpenStreetMap, ©CartoDB'
+            }).addTo(map);
+            renderMarkers();
+        }
+        
+        function createIcon(color) {
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<svg width="24" height="32" viewBox="0 0 24 32"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="${color}" stroke="#fff" stroke-width="1.5"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg>`,
+                iconSize: [24, 32],
+                iconAnchor: [12, 32],
+                popupAnchor: [0, -32]
+            });
+        }
+        
+        function renderMarkers() {
+            if (!map) return;
+            
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            
+            const filtered = getFiltered();
+            filtered.forEach(p => {
+                if (!p.lat || !p.lng) return;
+                
+                const icon = createIcon(statusMap[p.stage].color);
+                const marker = L.marker([p.lat, p.lng], { icon })
+                    .bindPopup(`
+                        <div class="map-popup">
+                            <div class="popup-header">${p.address}</div>
+                            <div class="popup-location">${p.city}, PA ${p.zip || ''}</div>
+                            <div class="popup-details">
+                                <span>${p.type}</span> • <span>${p.beds || '-'}bd/${p.baths || '-'}ba</span>
+                            </div>
+                            <div class="popup-price">${formatCurrency(p.asking)}</div>
+                        </div>
+                    `)
+                    .addTo(map);
+                markers.push(marker);
+            });
+            
+            if (markers.length > 0) {
+                const bounds = L.featureGroup(markers).getBounds();
+                map.fitBounds(bounds.pad(0.1));
+            }
+        }
+        
+        function openPanel(id) {
+            const p = properties.find(x => String(x.id) === String(id));
+            if (!p) return;
+            
+            editingPropertyId = id;
+            isEditMode = false;
+            
+            document.getElementById('panel-address').textContent = p.address;
+            document.getElementById('panel-location').textContent = `${p.city}, PA ${p.zip || ''} • ${p.county || 'No County'}`;
+            
+            renderPanelContent(p);
+            
+            document.getElementById('detail-panel').classList.add('open');
+            document.getElementById('overlay').classList.add('open');
+        }
+        
+        function renderPanelContent(p) {
+            const editBtn = !isEditMode ? 
+                `<button class="btn btn-secondary" style="margin-left:auto" onclick="toggleEditMode()">Edit</button>` : 
+                `<div style="display:flex; gap:8px; margin-left:auto">
+                    <button class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveEdit()">Save</button>
+                </div>`;
+            
+            const hasCoords = p.lat && p.lng;
+            const days = getDaysSinceAdded(p.dateAdded);
+            
+            document.getElementById('panel-content').innerHTML = `
+                <div class="detail-section">
+                    <h3>Deal Status</h3>
+                    <div class="status-selector">
+                        <label>Change Status</label>
+                        <select class="status-dropdown" id="edit-stage" ${!isEditMode ? `onchange="changePropertyStatus('${p.id}', this.value)"` : ''}>
+                            <option value="New" ${p.stage === 'New' ? 'selected' : ''}>New / Needs Sheet</option>
+                            <option value="Ready to Blast" ${p.stage === 'Ready to Blast' ? 'selected' : ''}>Ready to Blast</option>
+                            <option value="On Hold" ${p.stage === 'On Hold' ? 'selected' : ''}>On Hold</option>
+                            <option value="Too High" ${p.stage === 'Too High' ? 'selected' : ''}>Too High</option>
+                            <option value="Sold" ${p.stage === 'Sold' ? 'selected' : ''}>Sold</option>
+                        </select>
+                    </div>
+                    <div class="edit-mode-toggle">${editBtn}</div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Dates</h3>
+                    <div class="detail-grid">
+                        <div class="detail-field">
+                            <div class="field-label">Date Added</div>
+                            <div class="field-value">${formatDate(p.dateAdded)}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="field-label">Days Since Added</div>
+                            <div class="field-value">${days !== null ? days + ' days' : '-'}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Property Details</h3>
+                    <div class="detail-grid">
+                        <div class="detail-field">
+                            <div class="field-label">Type</div>
+                            ${isEditMode ? 
+                                `<select id="edit-type" class="inline-input">
+                                    <option value="SFH" ${p.type === 'SFH' ? 'selected' : ''}>SFH</option>
+                                    <option value="MFH" ${p.type === 'MFH' ? 'selected' : ''}>MFH</option>
+                                    <option value="Lot" ${p.type === 'Lot' ? 'selected' : ''}>Lot</option>
+                                    <option value="Unknown" ${p.type === 'Unknown' ? 'selected' : ''}>Unknown</option>
+                                </select>` :
+                                `<div class="field-value">${p.type}</div>`}
+                        </div>
+                        <div class="detail-field">
+                            <div class="field-label">County</div>
+                            ${isEditMode ? 
+                                `<input type="text" id="edit-county" value="${p.county || ''}" class="inline-input">` :
+                                `<div class="field-value${!p.county ? ' muted' : ''}">${p.county || 'Not set'}</div>`}
+                        </div>
+                        <div class="detail-field">
+                            <div class="field-label">Beds</div>
+                            ${isEditMode ? 
+                                `<input type="number" id="edit-beds" value="${p.beds || ''}" class="inline-input">` :
+                                `<div class="field-value${!p.beds ? ' muted' : ''}">${p.beds || '-'}</div>`}
+                        </div>
+                        <div class="detail-field">
+                            <div class="field-label">Baths</div>
+                            ${isEditMode ? 
+                                `<input type="number" id="edit-baths" value="${p.baths || ''}" step="0.5" class="inline-input">` :
+                                `<div class="field-value${!p.baths ? ' muted' : ''}">${p.baths || '-'}</div>`}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Deal Numbers</h3>
+                    <div class="detail-grid">
+                        <div class="detail-field">
+                            <div class="field-label">Asking Price</div>
+                            ${isEditMode ? 
+                                `<input type="number" id="edit-asking" value="${p.asking || ''}" class="inline-input">` :
+                                `<div class="field-value large">${formatCurrency(p.asking)}</div>`}
+                        </div>
+                        <div class="detail-field">
+                            <div class="field-label">ARV</div>
+                            ${isEditMode ? 
+                                `<input type="number" id="edit-arv" value="${p.arv || ''}" class="inline-input">` :
+                                `<div class="field-value${!p.arv ? ' muted' : ''}">${p.arv ? formatCurrency(p.arv) : 'Not set'}</div>`}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Access</h3>
+                    <div class="detail-field full">
+                        <div class="field-label">Lockbox / Entry</div>
+                        ${isEditMode ? 
+                            `<input type="text" id="edit-access" value="${p.access || ''}" class="inline-input">` :
+                            `<div class="field-value${!p.access ? ' muted' : ''}">${p.access || 'Not specified'}</div>`}
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Links</h3>
+                    <div class="detail-grid">
+                        <div class="detail-field full">
+                            <div class="field-label">Photos Link</div>
+                            ${isEditMode ? 
+                                `<input type="url" id="edit-pictures" value="${p.pictures || ''}" class="inline-input">` :
+                                `<div class="field-value">${p.pictures ? `<a href="${p.pictures}" target="_blank" style="color:var(--accent)">View Photos</a>` : '<span class="muted">No photos</span>'}</div>`}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Notes</h3>
+                    ${isEditMode ? 
+                        `<textarea id="edit-notes" class="inline-input" style="min-height:100px">${p.notes || ''}</textarea>` :
+                        (p.notes ? `<div class="notes-box">${p.notes}</div>` : `<div class="notes-box muted">No notes</div>`)}
+                </div>
+                
+                ${!isEditMode ? `
+                <div class="action-buttons">
+                    ${p.pictures ? `<a href="${p.pictures}" target="_blank" class="action-btn primary">View Photos</a>` : ''}
+                    <button class="action-btn secondary" onclick="copyAddress('${p.address}, ${p.city}, PA ${p.zip || ''}')">Copy Address</button>
+                </div>
+                <button class="btn btn-danger" style="width:100%;margin-top:12px" onclick="deleteProperty('${p.id}')">Delete Property</button>
+                ` : ''}
+            `;
+        }
+        
+        function closePanel() {
+            document.getElementById('detail-panel').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        }
+        
+        function copyAddress(addr) {
+            navigator.clipboard.writeText(addr);
+            showToast('Address copied!', 'success');
+        }
+        
+        function toggleEditMode() {
+            isEditMode = true;
+            const p = properties.find(x => x.id === editingPropertyId);
+            if (p) renderPanelContent(p);
+        }
+        
+        function cancelEdit() {
+            isEditMode = false;
+            const p = properties.find(x => x.id === editingPropertyId);
+            if (p) renderPanelContent(p);
+        }
+        
+        function saveEdit() {
+            const property = properties.find(p => String(p.id) === String(editingPropertyId));
+            if (!property) return;
+            
+            property.stage = document.getElementById('edit-stage').value;
+            property.type = document.getElementById('edit-type').value;
+            property.county = document.getElementById('edit-county').value || null;
+            property.beds = document.getElementById('edit-beds').value ? parseInt(document.getElementById('edit-beds').value) : null;
+            property.baths = document.getElementById('edit-baths').value ? parseFloat(document.getElementById('edit-baths').value) : null;
+            property.asking = document.getElementById('edit-asking').value ? parseInt(document.getElementById('edit-asking').value) : null;
+            property.arv = document.getElementById('edit-arv').value ? parseInt(document.getElementById('edit-arv').value) : null;
+            property.access = document.getElementById('edit-access').value || null;
+            property.pictures = document.getElementById('edit-pictures').value || null;
+            property.notes = document.getElementById('edit-notes') ? document.getElementById('edit-notes').value : property.notes;
+            property.lastUpdated = new Date().toISOString();
+            
+            saveProperties();
+            updateStats();
+            renderCountyList();
+            refresh();
+            isEditMode = false;
+            renderPanelContent(property);
+            showToast('Property updated!', 'success');
+        }
+        
+        function deleteProperty(id) {
+            if (!confirm('Delete this property?')) return;
+            
+            const index = properties.findIndex(p => String(p.id) === String(id));
+            if (index === -1) return;
+            
+            properties.splice(index, 1);
+            saveProperties();
+            updateStats();
+            renderCountyList();
+            renderTypeList();
+            refresh();
+            closePanel();
+            showToast('Property deleted', 'info');
+        }
+        
+        function changePropertyStatus(id, newStatus) {
+            const property = properties.find(p => String(p.id) === String(id));
+            if (!property) return;
+            
+            property.stage = newStatus;
+            property.lastUpdated = new Date().toISOString();
+            saveProperties();
+            updateStats();
+            refresh();
+            
+            if (!isEditMode) {
+                openPanel(id);
+            }
+            
+            showToast(`Status updated to: ${statusMap[newStatus].label}`, 'success');
+        }
+        
+        function openAddPropertyModal() {
+            document.getElementById('add-property-modal').classList.add('open');
+            resetPropertyForm();
+            showGeocodingStatus('');
+            parsedDeals = [];
+            document.getElementById('preview-section').classList.remove('active');
+        }
+        
+        function closeAddPropertyModal() {
+            document.getElementById('add-property-modal').classList.remove('open');
+        }
+        
+        function switchModalTab(tab) {
+            document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            if (tab === 'manual') {
+                document.querySelectorAll('.modal-tab')[0].classList.add('active');
+                document.getElementById('manual-tab').classList.add('active');
+            } else {
+                document.querySelectorAll('.modal-tab')[1].classList.add('active');
+                document.getElementById('paste-tab').classList.add('active');
+            }
+        }
+        
+        function resetPropertyForm() {
+            document.getElementById('property-form').reset();
+            document.getElementById('deal-text-input').value = '';
+            document.getElementById('form-lat').value = '';
+            document.getElementById('form-lng').value = '';
+        }
+        
+        function parseDealText() {
+            const text = document.getElementById('deal-text-input').value;
+            if (!text.trim()) {
+                showToast('Please paste deal text first', 'error');
+                return;
+            }
+            
+            const blocks = text.split(/\n\s*\n|---+/).filter(b => b.trim());
+            parsedDeals = [];
+            
+            blocks.forEach((block, index) => {
+                const deal = parseBlock(block);
+                if (deal.address) {
+                    deal._index = index;
+                    parsedDeals.push(deal);
+                }
+            });
+            
+            if (parsedDeals.length === 0) {
+                showToast('Could not parse any deals', 'error');
+                return;
+            }
+            
+            renderPreviewTable();
+            document.getElementById('preview-section').classList.add('active');
+            showToast(`Parsed ${parsedDeals.length} deal(s)`, 'success');
+        }
+        
+        function parseBlock(block) {
+            const lines = block.split('\n').map(l => l.trim()).filter(l => l);
+            
+            let address = '', city = '', zip = '', county = '', beds = null, baths = null;
+            let asking = null, access = null, pictures = null, arv = null, notes = [];
+            
+            for (const line of lines) {
+                const lower = line.toLowerCase();
+                
+                if (!address) {
+                    const addressMatch = line.match(/^(\d+[^,]+),\s*([^,]+),\s*PA\s*(\d{5})?/i);
+                    if (addressMatch) {
+                        address = addressMatch[1].trim();
+                        city = addressMatch[2].trim();
+                        zip = addressMatch[3] || '';
+                        continue;
+                    }
+                    const simpleMatch = line.match(/^(\d+[^,]+),\s*([A-Za-z\s]+)$/);
+                    if (simpleMatch && !lower.includes('county')) {
+                        address = simpleMatch[1].trim();
+                        city = simpleMatch[2].trim();
+                        continue;
+                    }
+                }
+                
+                if (lower.includes('county')) {
+                    county = line.replace(/county/i, '').trim();
+                    continue;
+                }
+                
+                const bedsMatch = line.match(/(\d+)\s*(?:br|bed)/i);
+                const bathsMatch = line.match(/(\d+\.?\d*)\s*(?:ba|bath)/i);
+                if (bedsMatch) beds = parseInt(bedsMatch[1]);
+                if (bathsMatch) baths = parseFloat(bathsMatch[1]);
+                if (bedsMatch || bathsMatch) continue;
+                
+                if (lower.includes('asking') || lower.match(/\$?\d+\.?\d*k/i)) {
+                    const kMatch = line.match(/(\d+\.?\d*)\s*k/i);
+                    if (kMatch) {
+                        asking = Math.round(parseFloat(kMatch[1]) * 1000);
+                        continue;
+                    }
+                }
+                
+                if (lower.includes('arv') || lower.includes('worth')) {
+                    const arvMatch = line.match(/(\d+\.?\d*)\s*k/i);
+                    if (arvMatch) {
+                        arv = Math.round(parseFloat(arvMatch[1]) * 1000);
+                        continue;
+                    }
+                }
+                
+                if (lower.includes('access') || lower.includes('lockbox') || 
+                    lower.includes('door') || lower.includes('code')) {
+                    access = line.replace(/access:?/i, '').trim();
+                    continue;
+                }
+                
+                if (lower.includes('dropbox') || lower.includes('photos') || 
+                    lower.includes('pics') || line.match(/https?:\/\//)) {
+                    const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+                    if (urlMatch) {
+                        pictures = urlMatch[1];
+                        continue;
+                    }
+                }
+                
+                if (line.length > 3) {
+                    notes.push(line);
+                }
+            }
+            
+            return { address, city, zip, county, beds, baths, asking, access, pictures, arv, notes: notes.join('\n') };
+        }
+        
+        function renderPreviewTable() {
+            const tbody = document.getElementById('preview-body');
+            tbody.innerHTML = parsedDeals.map((deal, i) => `
+                <tr>
+                    <td><strong>${deal.address}</strong><br><small style="color:var(--text-muted)">${deal.city}</small></td>
+                    <td>${deal.asking ? formatCurrency(deal.asking) : '-'}</td>
+                    <td>${deal.beds || '-'}/${deal.baths || '-'}</td>
+                    <td>${deal.county || '-'}</td>
+                    <td>${deal.pictures ? 'Yes' : 'No'}</td>
+                    <td>${deal.arv ? formatCurrency(deal.arv) : 'No'}</td>
+                    <td class="preview-actions">
+                        <button class="preview-btn edit" onclick="editParsedDeal(${i})">Edit</button>
+                        <button class="preview-btn remove" onclick="removeParsedDeal(${i})">X</button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            document.getElementById('preview-count').textContent = `${parsedDeals.length} properties`;
+        }
+        
+        function editParsedDeal(index) {
+            const deal = parsedDeals[index];
+            
+            document.getElementById('form-address').value = deal.address || '';
+            document.getElementById('form-city').value = deal.city || '';
+            document.getElementById('form-zip').value = deal.zip || '';
+            document.getElementById('form-county').value = deal.county || '';
+            document.getElementById('form-beds').value = deal.beds || '';
+            document.getElementById('form-baths').value = deal.baths || '';
+            document.getElementById('form-asking').value = deal.asking || '';
+            document.getElementById('form-arv').value = deal.arv || '';
+            document.getElementById('form-access').value = deal.access || '';
+            document.getElementById('form-pictures').value = deal.pictures || '';
+            document.getElementById('form-notes').value = deal.notes || '';
+            
+            parsedDeals.splice(index, 1);
+            renderPreviewTable();
+            switchModalTab('manual');
+            showToast('Deal loaded into form', 'info');
+        }
+        
+        function removeParsedDeal(index) {
+            parsedDeals.splice(index, 1);
+            renderPreviewTable();
+            if (parsedDeals.length === 0) {
+                document.getElementById('preview-section').classList.remove('active');
+            }
+        }
+        
+        function clearParsed() {
+            parsedDeals = [];
+            document.getElementById('preview-section').classList.remove('active');
+            document.getElementById('deal-text-input').value = '';
+        }
+        
+        async function saveAllParsed() {
+            if (parsedDeals.length === 0) {
+                showToast('No deals to save', 'error');
+                return;
+            }
+            
+            showToast(`Saving ${parsedDeals.length} properties...`, 'info');
+            
+            const now = new Date().toISOString();
+            
+            for (const deal of parsedDeals) {
+                const newProperty = {
+                    id: crypto.randomUUID(),
+                    address: deal.address,
+                    city: deal.city,
+                    zip: deal.zip || null,
+                    county: deal.county || null,
+                    type: 'Unknown',
+                    beds: deal.beds,
+                    baths: deal.baths,
+                    sqft: null,
+                    asking: deal.asking,
+                    arv: deal.arv,
+                    rehab: null,
+                    stage: 'New',
+                    access: deal.access,
+                    pictures: deal.pictures,
+                    contractLink: null,
+                    investorSheetLink: null,
+                    notes: deal.notes || null,
+                    lat: null,
+                    lng: null,
+                    geoPrecision: 'none',
+                    dateAdded: now,
+                    lastUpdated: now
+                };
+                
+                properties.push(newProperty);
+            }
+            
+            saveProperties();
+            updateStats();
+            renderCountyList();
+            renderTypeList();
+            refresh();
+            
+            parsedDeals = [];
+            document.getElementById('preview-section').classList.remove('active');
+            document.getElementById('deal-text-input').value = '';
+            
+            closeAddPropertyModal();
+            showToast(`Saved ${parsedDeals.length || 'all'} properties!`, 'success');
+        }
+        
+        async function autoFillCounty() {
+            const address = document.getElementById('form-address').value;
+            const city = document.getElementById('form-city').value;
+            const zip = document.getElementById('form-zip').value;
+            
+            if (!address || !city) return;
+            
+            try {
+                const query = `${address}, ${city}, PA${zip ? ' ' + zip : ''}`;
+                const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=1`;
+                
+                const response = await fetch(url, {
+                    headers: { 'User-Agent': 'JiwaniPropertySolutions/1.0' }
+                });
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    const addressDetails = result.address;
+                    
+                    let county = addressDetails.county || '';
+                    if (county) {
+                        county = county.replace(/ County$/i, '').trim();
+                        document.getElementById('form-county').value = county;
+                    }
+                    
+                    document.getElementById('form-lat').value = result.lat;
+                    document.getElementById('form-lng').value = result.lon;
+                }
+            } catch (error) {
+                console.error('Geocoding error:', error);
+            }
+        }
+        
+        async function saveProperty(event) {
+            event.preventDefault();
+            
+            const saveBtn = document.getElementById('save-property-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            
+            const address = document.getElementById('form-address').value;
+            const city = document.getElementById('form-city').value;
+            const zip = document.getElementById('form-zip').value || null;
+            
+            showGeocodingStatus('loading');
+            
+            let lat = null;
+            let lng = null;
+            let geoPrecision = 'none';
+            
+            const geoResult = await geocodeAddress(address, city, 'PA', zip);
+            
+            if (geoResult.success) {
+                lat = geoResult.lat;
+                lng = geoResult.lng;
+                geoPrecision = geoResult.geoPrecision;
+                showGeocodingStatus('success');
+            } else {
+                showGeocodingStatus('error');
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const now = new Date().toISOString();
+            
+            const newProperty = {
+                id: crypto.randomUUID(),
+                address: address,
+                city: city,
+                zip: zip,
+                county: document.getElementById('form-county').value || null,
+                type: document.getElementById('form-type').value,
+                beds: document.getElementById('form-beds').value ? parseInt(document.getElementById('form-beds').value) : null,
+                baths: document.getElementById('form-baths').value ? parseFloat(document.getElementById('form-baths').value) : null,
+                sqft: document.getElementById('form-sqft').value ? parseInt(document.getElementById('form-sqft').value) : null,
+                asking: document.getElementById('form-asking').value ? parseInt(document.getElementById('form-asking').value) : null,
+                arv: document.getElementById('form-arv').value ? parseInt(document.getElementById('form-arv').value) : null,
+                rehab: document.getElementById('form-rehab').value ? parseInt(document.getElementById('form-rehab').value) : null,
+                stage: document.getElementById('form-stage').value,
+                access: document.getElementById('form-access').value || null,
+                pictures: document.getElementById('form-pictures').value || null,
+                contractLink: document.getElementById('form-contract-link').value || null,
+                investorSheetLink: document.getElementById('form-investor-sheet').value || null,
+                notes: document.getElementById('form-notes').value || null,
+                lat: lat,
+                lng: lng,
+                geoPrecision: geoPrecision,
+                dateAdded: now,
+                lastUpdated: now
+            };
+            
+            properties.push(newProperty);
+            saveProperties();
+            updateStats();
+            renderCountyList();
+            renderTypeList();
+            refresh();
+            
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Property';
+            
+            const saveAndAdd = document.getElementById('save-and-add').checked;
+            
+            if (saveAndAdd) {
+                resetPropertyForm();
+                showGeocodingStatus('');
+                showToast('Property saved! Add another.', 'success');
+            } else {
+                closeAddPropertyModal();
+                showToast('Property added!', 'success');
+            }
+        }
+        
+        function setupEventListeners() {
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const view = this.dataset.view;
+                    document.querySelectorAll('.grid-view, .list-view, .map-view').forEach(v => v.classList.remove('active'));
+                    document.getElementById(`${view}-view`).classList.add('active');
+                    
+                    if (view === 'map') setTimeout(() => map.invalidateSize(), 100);
+                });
+            });
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.dataset.filter;
+                    refresh();
+                });
+            });
+            
+            document.getElementById('search-input').addEventListener('input', function() {
+                searchTerm = this.value.toLowerCase();
+                refresh();
+            });
+            
+            document.getElementById('county-list').addEventListener('click', function(e) {
+                const item = e.target.closest('.county-item');
+                if (item) {
+                    if (item.classList.contains('active')) {
+                        item.classList.remove('active');
+                        countyFilter = null;
+                    } else {
+                        document.querySelectorAll('#county-list .county-item').forEach(i => i.classList.remove('active'));
+                        item.classList.add('active');
+                        countyFilter = item.dataset.county;
+                    }
+                    refresh();
+                }
+            });
+            
+            document.getElementById('type-list').addEventListener('click', function(e) {
+                const item = e.target.closest('.county-item');
+                if (item) {
+                    if (item.classList.contains('active')) {
+                        item.classList.remove('active');
+                        typeFilter = null;
+                    } else {
+                        document.querySelectorAll('#type-list .county-item').forEach(i => i.classList.remove('active'));
+                        item.classList.add('active');
+                        typeFilter = item.dataset.type;
+                    }
+                    refresh();
+                }
+            });
+            
+            document.querySelectorAll('.density-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.density-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    if (this.dataset.density === 'compact') {
+                        document.body.classList.add('compact');
+                    } else {
+                        document.body.classList.remove('compact');
+                    }
+                });
+            });
+            
+            document.getElementById('overlay').addEventListener('click', closePanel);
+            
+            document.addEventListener('keydown', function(e) {
+                const modal = document.getElementById('add-property-modal');
+                const panel = document.getElementById('detail-panel');
+                
+                if (e.key === 'Escape') {
+                    if (modal.classList.contains('open')) {
+                        closeAddPropertyModal();
+                    } else if (panel.classList.contains('open')) {
+                        closePanel();
+                    }
+                }
+            });
+        }
+        
+        function refresh() {
+            renderGrid();
+            renderList();
+            if (map) {
+                setTimeout(() => {
+                    map.invalidateSize();
+                    renderMarkers();
+                }, 50);
+            }
+            updateFilterCounts();
+        }
+        
+        function exportCSV() {
+            const headers = [
+                'Address', 'City', 'ZIP', 'County', 'Type', 'Beds', 'Baths', 'Sq Ft', 
+                'Asking', 'ARV', 'Rehab', 'Access', 'Stage', 'Notes', 'Photos', 
+                'Contract Link', 'Investor Sheet', 'Lat', 'Lng', 'Geo Precision',
+                'Date Added', 'Days Since Added', 'Last Updated'
+            ];
+            
+            const rows = properties.map(p => {
+                const days = getDaysSinceAdded(p.dateAdded);
+                return [
+                    `"${p.address}"`, 
+                    p.city, 
+                    p.zip || '', 
+                    p.county || '', 
+                    p.type, 
+                    p.beds || '', 
+                    p.baths || '', 
+                    p.sqft || '', 
+                    p.asking || '', 
+                    p.arv || '',
+                    p.rehab || '',
+                    `"${p.access || ''}"`, 
+                    p.stage, 
+                    `"${(p.notes || '').replace(/"/g, '""')}"`, 
+                    p.pictures || '',
+                    p.contractLink || '',
+                    p.investorSheetLink || '',
+                    p.lat || '', 
+                    p.lng || '',
+                    p.geoPrecision || '',
+                    p.dateAdded || '',
+                    days !== null ? days : '',
+                    p.lastUpdated || ''
+                ];
+            });
+            
+            const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'jps_properties_' + new Date().toISOString().split('T')[0] + '.csv';
+            a.click();
+            showToast('CSV exported!', 'success');
+        }
+
+        function exportProperties() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (!data) return alert('No data to export');
+
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'jps_properties_backup.json';
+            a.click();
+
+            URL.revokeObjectURL(url);
+            showToast('Data exported!', 'success');
+        }
+
+        function importProperties(file) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    JSON.parse(reader.result); // validate JSON
+                    localStorage.setItem(STORAGE_KEY, reader.result);
+                    location.reload();
+                } catch (e) {
+                    showToast('Invalid JSON file', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
