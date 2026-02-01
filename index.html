@@ -265,6 +265,7 @@
                 Import Data
                 <input type="file" accept="application/json" onchange="importProperties(this.files[0])" style="display:none">
             </label>
+            <button class="btn btn-secondary" onclick="resetToDefaults()">Reset Data</button>
             <button class="btn btn-primary" onclick="openAddPropertyModal()">+ Add Property</button>
         </div>
     </div>
@@ -637,8 +638,24 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             loadProperties();
-            if (!localStorage.getItem(STORAGE_KEY) || !properties.length) { properties = defaultProperties.slice(); saveProperties(); }
-            normalizeProperties(); updateStats(); renderCountyList(); renderTypeList(); renderGrid(); renderList(); initMap(); setupEventListeners(); updateFilterCounts();
+            
+            // Only load defaults if no stored data exists
+            if (!localStorage.getItem(STORAGE_KEY) || !properties.length) { 
+                properties = defaultProperties.slice(); 
+                saveProperties(); 
+            }
+            
+            normalizeProperties(); 
+            updateStats(); 
+            renderCountyList(); 
+            renderTypeList(); 
+            renderGrid(); 
+            renderList(); 
+            initMap(); 
+            setupEventListeners(); 
+            updateFilterCounts();
+            
+            console.log(`Loaded ${properties.length} properties`);
         });
         
         function updateStats() {
@@ -949,6 +966,13 @@
             const reader = new FileReader();
             reader.onload = () => { try { const data = JSON.parse(reader.result); if (!Array.isArray(data)) throw new Error('Expected array'); if (!data.every(p => p.address && p.city)) throw new Error('Missing fields'); localStorage.setItem(STORAGE_KEY, reader.result); location.reload(); } catch (e) { showToast('Invalid: ' + e.message, 'error'); }};
             reader.readAsText(file);
+        }
+        
+        function resetToDefaults() {
+            if (!confirm('Reset to default properties? This will replace all current data with the original 40 properties. Make sure to export first if you want to keep your changes!')) return;
+            properties = defaultProperties.slice();
+            saveProperties();
+            location.reload();
         }
     </script>
 </body>
