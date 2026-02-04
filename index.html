@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jiwani Property Solutions - Deal Pipeline</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Firebase SDK (Modular/ESM version) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import {
+            getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCy05gjS9ZugKn1sbnh1v6ujfud9-PTIiM",
+            authDomain: "jps-pipeline.firebaseapp.com",
+            projectId: "jps-pipeline",
+            storageBucket: "jps-pipeline.firebasestorage.app",
+            messagingSenderId: "858132565741",
+            appId: "1:858132565741:web:9889b419144473a6d6c6e4",
+            measurementId: "G-4FFRWG6692"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Expose Firebase functions to app.js
+        window._fb = {
+            db,
+            doc,
+            getDoc,
+            setDoc,
+            onSnapshot,
+            serverTimestamp
+        };
+
+        // Signal that Firebase is ready
+        window.dispatchEvent(new Event('firebase-ready'));
+    </script>
+</head>
+<body>
+    <!-- PIN Lock Overlay -->
+    <div id="lockOverlay">
+        <div id="lockCard">
+            <h2>🔒 Enter PIN</h2>
+            <p>Enter your 4-digit PIN to access the application</p>
+            <div class="pinInputs">
+                <input type="tel" class="pinBox" maxlength="1" pattern="[0-9]" autocomplete="off">
+                <input type="tel" class="pinBox" maxlength="1" pattern="[0-9]" autocomplete="off">
+                <input type="tel" class="pinBox" maxlength="1" pattern="[0-9]" autocomplete="off">
+                <input type="tel" class="pinBox" maxlength="1" pattern="[0-9]" autocomplete="off">
+            </div>
+            <div id="lockError"></div>
+            <div class="lockButtons">
+                <button id="clearPinBtn">Clear</button>
+                <button id="unlockBtn">Unlock</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="appRoot" style="display:none">
+        <div class="app-container">
+            <div class="main-content">
+                <!-- Header -->
+                <div class="header">
+                    <div class="header-left">
+                        <h1>JPS Pipeline</h1>
+                        <span class="header-subtitle" id="total-count">0 properties</span>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-ghost" onclick="toggleBulkMode()" title="Bulk Mode">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="10" y="1" width="5" height="5" rx="1"/><rect x="1" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/></svg>
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-ghost" onclick="toggleDropdown()" title="More actions">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
+                            </button>
+                            <div class="dropdown-menu" id="header-dropdown">
+                                <button onclick="exportCSV(); closeDropdown()">Export CSV</button>
+                                <button onclick="exportProperties(); closeDropdown()">Export JSON</button>
+                                <label style="cursor:pointer;display:block;">
+                                    Import JSON
+                                    <input type="file" accept=".json" onchange="importProperties(this.files[0]); closeDropdown()" style="display:none;">
+                                </label>
+                                <div class="dropdown-divider"></div>
+                                <button onclick="geocodeMissing(); closeDropdown()">Geocode Missing</button>
+                                <button onclick="fillMissingCounties(); closeDropdown()">Fill Counties</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="openAddPropertyModal()">+ Add Property</button>
+                    </div>
+                </div>
+
+                <!-- Content Area -->
+                <div class="content-area">
+                    <!-- Sidebar -->
+                    <div class="sidebar" id="sidebar">
+                        <div class="sidebar-inner">
+                            <div class="sidebar-section">
+                                <button class="sidebar-toggle" onclick="toggleSidebarSection(this)">
+                                    <span>Counties</span>
+                                    <svg class="chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4.5L6 7.5L9 4.5"/></svg>
+                                </button>
+                                <div class="sidebar-body" id="county-list"></div>
+                            </div>
+                            <div class="sidebar-section">
+                                <button class="sidebar-toggle" onclick="toggleSidebarSection(this)">
+                                    <span>Property type</span>
+                                    <svg class="chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4.5L6 7.5L9 4.5"/></svg>
+                                </button>
+                                <div class="sidebar-body" id="type-list"></div>
+                            </div>
+                        </div>
+                        <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="Toggle sidebar">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 3L5 7L9 11"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Sidebar expand button (visible when collapsed) -->
+                    <button class="sidebar-expand-btn" id="sidebar-expand-btn" onclick="toggleSidebar()" title="Show sidebar">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3L9 7L5 11"/></svg>
+                    </button>
+
+                    <!-- Main Panel -->
+                    <div class="main-panel">
+                        <!-- Controls -->
+                        <div class="controls">
+                            <div class="search-box">
+                                <input type="text" id="search-input" placeholder="Search properties...">
+                            </div>
+                            <div class="nav-tabs">
+                                <button class="nav-tab active" data-view="grid">Grid</button>
+                                <button class="nav-tab" data-view="list">List</button>
+                                <button class="nav-tab" data-view="map">Map</button>
+                            </div>
+                            <div class="filter-tabs">
+                                <button class="filter-btn active" data-filter="all">All <span class="filter-count" id="all-count"></span></button>
+                                <button class="filter-btn" data-filter="ready"><span class="dot" style="background:var(--green)"></span> Ready <span class="filter-count" id="ready-count">0</span></button>
+                                <button class="filter-btn" data-filter="new"><span class="dot" style="background:var(--gray)"></span> New <span class="filter-count" id="new-count">0</span></button>
+                                <button class="filter-btn" data-filter="hold"><span class="dot" style="background:var(--yellow)"></span> Hold <span class="filter-count" id="hold-count">0</span></button>
+                                <button class="filter-btn" data-filter="high"><span class="dot" style="background:var(--orange)"></span> High <span class="filter-count" id="high-count">0</span></button>
+                                <button class="filter-btn" data-filter="sold"><span class="dot" style="background:var(--red)"></span> Sold <span class="filter-count" id="sold-count">0</span></button>
+                            </div>
+                            <div class="view-controls">
+                                <select id="sort-select" onchange="handleSort()">
+                                    <option value="dateAdded-desc">Newest First</option>
+                                    <option value="dateAdded-asc">Oldest First</option>
+                                    <option value="asking-asc">Price: Low to High</option>
+                                    <option value="asking-desc">Price: High to Low</option>
+                                    <option value="city-asc">City: A-Z</option>
+                                    <option value="county-asc">County: A-Z</option>
+                                </select>
+                                <button class="density-btn active" data-density="normal">Normal</button>
+                                <button class="density-btn" data-density="compact">Compact</button>
+                            </div>
+                        </div>
+
+                        <!-- Bulk Actions -->
+                        <div id="bulk-actions" class="bulk-actions">
+                            <div class="bulk-header">
+                                <span id="selected-count">0 selected</span>
+                                <div class="bulk-controls">
+                                    <input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll()"> Select All
+                                    <select id="bulk-status-select">
+                                        <option value="">Change Status...</option>
+                                        <option value="Ready to Blast">Ready to Blast</option>
+                                        <option value="New">New / Needs Sheet</option>
+                                        <option value="On Hold">On Hold</option>
+                                        <option value="Too High">Too High</option>
+                                        <option value="Sold">Sold</option>
+                                    </select>
+                                    <button class="btn btn-primary" onclick="applyBulkStatus()">Apply</button>
+                                    <button class="btn btn-danger" onclick="bulkDelete()">Delete Selected</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Views Container -->
+                        <div class="views-container">
+                            <!-- Grid View -->
+                            <div id="grid-view" class="grid-view active">
+                                <div id="property-grid" class="property-grid"></div>
+                            </div>
+
+                            <!-- List View -->
+                            <div id="list-view" class="list-view">
+                                <table class="list-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="bulk-col" style="display:none"><input type="checkbox" id="list-select-all" onclick="toggleSelectAll()"></th>
+                                            <th data-sort="address">Address</th>
+                                            <th data-sort="city">City</th>
+                                            <th data-sort="county">County</th>
+                                            <th data-sort="type">Type</th>
+                                            <th>Beds/Baths</th>
+                                            <th data-sort="asking">Asking</th>
+                                            <th data-sort="dateAdded">Days</th>
+                                            <th data-sort="stage">Status</th>
+                                            <th>Photos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="list-body"></tbody>
+                                </table>
+                            </div>
+
+                            <!-- Map View -->
+                            <div id="map-view" class="map-view">
+                                <div id="map"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Panel -->
+        <div id="overlay" class="overlay"></div>
+        <div id="detail-panel">
+            <div class="panel-header">
+                <div>
+                    <h2 id="panel-address"></h2>
+                    <p id="panel-location"></p>
+                </div>
+                <button class="close-modal" onclick="closePanel()">×</button>
+            </div>
+            <div id="panel-content"></div>
+        </div>
+
+        <!-- Add Property Modal -->
+        <div id="add-property-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add New Property</h2>
+                    <button class="close-modal" onclick="closeAddPropertyModal()">×</button>
+                </div>
+                <div class="modal-tabs">
+                    <button class="modal-tab active" onclick="switchModalTab('manual')">Manual Entry</button>
+                    <button class="modal-tab" onclick="switchModalTab('paste')">Paste & Parse</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Manual Entry Tab -->
+                    <div id="manual-tab" class="tab-content active">
+                        <form id="property-form" onsubmit="saveProperty(event)">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Address *</label>
+                                    <input type="text" id="form-address" required oninput="checkDuplicate(); autoFillCounty()">
+                                </div>
+                                <div class="form-group">
+                                    <label>City *</label>
+                                    <input type="text" id="form-city" required oninput="checkDuplicate(); autoFillCounty()">
+                                </div>
+                            </div>
+                            <div id="duplicate-warning"></div>
+                            <div class="form-row-3">
+                                <div class="form-group">
+                                    <label>ZIP</label>
+                                    <input type="text" id="form-zip" oninput="autoFillCounty()">
+                                </div>
+                                <div class="form-group">
+                                    <label>County</label>
+                                    <input type="text" id="form-county">
+                                </div>
+                                <div class="form-group">
+                                    <label>Type *</label>
+                                    <select id="form-type" required>
+                                        <option value="SFH">SFH</option>
+                                        <option value="MFH">MFH</option>
+                                        <option value="Lot">Lot</option>
+                                        <option value="Unknown">Unknown</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="geocode-status"></div>
+                            <div class="form-row-3">
+                                <div class="form-group">
+                                    <label>Beds</label>
+                                    <input type="number" id="form-beds" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>Baths</label>
+                                    <input type="number" id="form-baths" min="0" step="0.5">
+                                </div>
+                                <div class="form-group">
+                                    <label>Sq Ft</label>
+                                    <input type="number" id="form-sqft" min="0">
+                                </div>
+                            </div>
+                            <div class="form-row-3">
+                                <div class="form-group">
+                                    <label>Asking Price *</label>
+                                    <input type="number" id="form-asking" required min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>ARV</label>
+                                    <input type="number" id="form-arv" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>Rehab</label>
+                                    <input type="number" id="form-rehab" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Status *</label>
+                                <select id="form-stage" required>
+                                    <option value="New">New / Needs Sheet</option>
+                                    <option value="Ready to Blast">Ready to Blast</option>
+                                    <option value="On Hold">On Hold</option>
+                                    <option value="Too High">Too High</option>
+                                    <option value="Sold">Sold</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Lockbox / Access</label>
+                                <input type="text" id="form-access" placeholder="e.g., 3333 front door">
+                            </div>
+                            <div class="form-group">
+                                <label>Photos Link (Dropbox)</label>
+                                <input type="url" id="form-pictures" placeholder="https://...">
+                            </div>
+                            <div class="form-group">
+                                <label>Contract (PDF)</label>
+                                <div class="file-upload-area" id="contract-upload-area">
+                                    <input type="file" id="form-contract-file" accept=".pdf" onchange="handleFileSelect(this, 'contract')">
+                                    <div class="file-upload-placeholder" id="contract-placeholder">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                        <span>Choose PDF (max 500KB)</span>
+                                    </div>
+                                    <div class="file-selected" id="contract-selected" style="display:none">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                        <span id="contract-filename"></span>
+                                        <button type="button" class="file-remove-btn" onclick="clearFileSelect('contract')">&times;</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Investor Sheet (PDF)</label>
+                                <div class="file-upload-area" id="investor-upload-area">
+                                    <input type="file" id="form-investor-file" accept=".pdf" onchange="handleFileSelect(this, 'investor')">
+                                    <div class="file-upload-placeholder" id="investor-placeholder">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                        <span>Choose PDF (max 500KB)</span>
+                                    </div>
+                                    <div class="file-selected" id="investor-selected" style="display:none">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                        <span id="investor-filename"></span>
+                                        <button type="button" class="file-remove-btn" onclick="clearFileSelect('investor')">&times;</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Notes</label>
+                                <textarea id="form-notes" rows="3"></textarea>
+                            </div>
+                            <input type="hidden" id="form-lat">
+                            <input type="hidden" id="form-lng">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="save-and-add">
+                                <label for="save-and-add">Save and add another</label>
+                            </div>
+                            <button type="submit" id="save-property-btn" class="btn btn-primary" style="width:100%;margin-top:1rem">Save Property</button>
+                        </form>
+                    </div>
+
+                    <!-- Paste & Parse Tab -->
+                    <div id="paste-tab" class="tab-content">
+                        <div class="form-group">
+                            <label>Paste Deal Text</label>
+                            <textarea id="deal-text-input" rows="10" placeholder="Paste one or more deals here (separated by blank lines or ---)"></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="parseDealText()">Parse Deals</button>
+                        <button class="btn btn-secondary" onclick="clearParsed()">Clear</button>
+                        
+                        <div id="preview-section" class="preview-section">
+                            <div class="preview-header">
+                                <h3 id="preview-count">0 properties</h3>
+                                <div class="preview-actions">
+                                    <button class="btn btn-secondary" onclick="clearParsed()">Clear All</button>
+                                    <button class="btn btn-primary" onclick="saveAllParsed()">Save All</button>
+                                </div>
+                            </div>
+                            <table class="list-table">
+                                <thead>
+                                    <tr>
+                                        <th>Address</th>
+                                        <th>Asking</th>
+                                        <th>Beds/Baths</th>
+                                        <th>County</th>
+                                        <th>Photos</th>
+                                        <th>ARV</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="preview-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- End #appRoot -->
+
+    <script src="js/app.js"></script>
+</body>
+</html>
